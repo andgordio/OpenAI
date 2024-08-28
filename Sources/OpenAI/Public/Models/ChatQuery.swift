@@ -601,12 +601,100 @@ public struct ChatQuery: Equatable, Codable, Streamable {
 
     // See more https://platform.openai.com/docs/guides/text-generation/json-mode
     public enum ResponseFormat: String, Codable, Equatable {
+        
+        case jsonSchema = "json_schema"
         case jsonObject = "json_object"
         case text
+        
+        enum CodingKeys: String, CodingKey {
+            case type
+            case jsonSchema = "json_schema"
+        }
+        
+        enum JSONSChemaCodingKeys: String, CodingKey {
+            case name
+            case schema
+            // case strict
+        }
+        
+        public init(from decoder: any Decoder) throws {
+            print("made an attempt to decode")
+            try self.init(from: decoder)
+        }
 
         public func encode(to encoder: Encoder) throws {
+//            
+//            
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            
+            try container.encode(self.rawValue, forKey: .type)
+            
+            if self == .jsonSchema {
+                
+//                var innerContainer = container.nestedUnkeyedContainer(forKey: .jsonSchema)
+//                try innerContainer.encode(String.init("""
+//                    "schema": { "type": "object", "properties": { "name": { "type": "string" }, "isLive": { "type": "bool" }, "age": { "type": "integer" }, "hobbies": { "type": "array", "items": { "type": "string" } }, "meta": { "type": "object", "properties": { "created": { "type": "integer" }, "updated": { "type": "bool" } }, "required": [ "a", "b" ] } }, "required": [ "isLive", "age", "hobbies", "meta" ] }
+//                    """))
+                
+                var innerContainer = container.nestedContainer(keyedBy: JSONSChemaCodingKeys.self, forKey: .jsonSchema)
+                try innerContainer.encode("sample", forKey: .name)
+                
+                let jsonString = """
+                    { "type": "object", "properties": { "name": { "type": "string" }, "isLive": { "type": "boolean" }, "age": { "type": "integer" }, "hobbies": { "type": "array", "items": { "type": "string" } }, "meta": { "type": "object", "properties": { "created": { "type": "integer" }, "updated": { "type": "boolean" } }, "required": [ "a", "b" ] } }, "required": [ "isLive", "age", "hobbies", "meta" ] }
+                    """
+                
+                try innerContainer.encode(jsonString, forKey: .schema)
+                
+
+            }
+            
+            
+        }
+    }
+    
+    struct AnyCodable: Codable {
+        let value: Any
+
+        init(_ value: Any) {
+            self.value = value
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.singleValueContainer()
+            if let bool = try? container.decode(Bool.self) {
+                self.value = bool
+            } else if let int = try? container.decode(Int.self) {
+                self.value = int
+            } else if let double = try? container.decode(Double.self) {
+                self.value = double
+            } else if let string = try? container.decode(String.self) {
+                self.value = string
+            } else if let array = try? container.decode([AnyCodable].self) {
+                self.value = array.map { $0.value }
+            } else if let dictionary = try? container.decode([String: AnyCodable].self) {
+                self.value = dictionary.mapValues { $0.value }
+            } else {
+                throw DecodingError.dataCorruptedError(in: container, debugDescription: "Unable to decode value")
+            }
+        }
+
+        func encode(to encoder: Encoder) throws {
             var container = encoder.singleValueContainer()
-            try container.encode(["type": self.rawValue])
+            if let value = self.value as? Bool {
+                try container.encode(value)
+            } else if let value = self.value as? Int {
+                try container.encode(value)
+            } else if let value = self.value as? Double {
+                try container.encode(value)
+            } else if let value = self.value as? String {
+                try container.encode(value)
+            } else if let value = self.value as? [AnyCodable] {
+                try container.encode(value)
+            } else if let value = self.value as? [String: AnyCodable] {
+                try container.encode(value)
+            } else {
+                throw EncodingError.invalidValue(value, EncodingError.Context(codingPath: container.codingPath, debugDescription: "Invalid value"))
+            }
         }
     }
 

@@ -35,7 +35,39 @@ extension MultipartFormDataRequest: URLRequestBuildable {
         if let organizationIdentifier {
             request.setValue(organizationIdentifier, forHTTPHeaderField: "OpenAI-Organization")
         }
+        print("building")
         request.httpBody = body.encode(boundary: boundary)
+        print("building2" )
+        
+        if let body = request.httpBody, let jsonString = String(data: body, encoding: .utf8) {
+            
+            
+                
+                let pattern = #"\\\""#
+                let regex = try! NSRegularExpression(pattern: pattern)
+                let range = NSRange(location: 0, length: jsonString.utf16.count)
+                let modifiedString = regex.stringByReplacingMatches(in: jsonString, options: [], range: range, withTemplate: "\"")
+                
+                let pattern2 = #""schema":"\{"#
+                let regex2 = try NSRegularExpression(pattern: pattern2)
+                let range2 = NSRange(location: 0, length: modifiedString.utf16.count)
+                let modifiedString2 = regex2.stringByReplacingMatches(in: modifiedString, options: [], range: range2, withTemplate: "\"schema\":{")
+                
+//                let pattern3 = #"\}\}","\type\":\"json_schema\"}"#
+//                let regex3 = try NSRegularExpression(pattern: pattern3)
+//                let range3 = NSRange(location: 0, length: modifiedString2.utf16.count)
+//                let modifiedString3 = regex3.stringByReplacingMatches(in: modifiedString2, options: [], range: range3, withTemplate: "}},\"type\":\"json_schema\"}")
+            
+            print("updating")
+            print(modifiedString2)
+                
+            
+            request.httpBody = modifiedString2.data(using: .utf8)
+        } else {
+            print("updating failed")
+        }
+        
+        
         return request
     }
 }
